@@ -1,0 +1,29 @@
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate      # Flyway still owns the schema in tests too
+  flyway:
+    enabled: true
+
+# DataSeeder is @Profile("!test") so it does NOT run — tests create their own data.
+
+application:
+  security:
+    jwt:
+      # Short-lived tokens for test speed; same base64-encoded key format as prod
+      secret-key: bXdhbmdhSGFraWthQmFua1dhbGxldFNlY3JldEtleTIwMjYhTm90Rm9yUHJvZHVjdGlvbg==
+      expiration: 3600000           # 1 hour
+      refresh-expiration: 7200000   # 2 hours
+  transfer:
+    min-amount: 100
+    max-amount: 5000000
+  topup:
+    min-amount: 100
+    max-amount: 10000000
+
+logging:
+  level:
+    com.mwanga.wallet: WARN
+    org.flywaydb: WARN
+    org.testcontainers: WARN

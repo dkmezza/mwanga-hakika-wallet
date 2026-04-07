@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: mwanga-wallet
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mwanga_wallet}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: MwangaWalletHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Flyway owns the schema — never let Hibernate alter it
+    show-sql: false
+    open-in-view: false    # Avoid lazy-load pitfalls in controllers
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  # Never expose Spring's default error page details
+  mvc:
+    problemdetails:
+      enabled: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+  compression:
+    enabled: true
+    min-response-size: 1024
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+  show-actuator: false
+
+# ─── Application-specific properties ──────────────────────────────────────────
+application:
+  security:
+    jwt:
+      # IMPORTANT: Override JWT_SECRET in production with a 256-bit+ base64-encoded secret.
+      # Default below is for local development ONLY.
+      secret-key: ${JWT_SECRET:bXdhbmdhSGFraWthQmFua1dhbGxldFNlY3JldEtleTIwMjYhTm90Rm9yUHJvZHVjdGlvbg==}
+      expiration: ${JWT_EXPIRATION:86400000}          # 24 hours  (milliseconds)
+      refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days (milliseconds)
+
+  transfer:
+    min-amount: ${TRANSFER_MIN_AMOUNT:100}
+    max-amount: ${TRANSFER_MAX_AMOUNT:5000000}
+
+  topup:
+    min-amount: ${TOPUP_MIN_AMOUNT:100}
+    max-amount: ${TOPUP_MAX_AMOUNT:10000000}
+
+  rate-limit:
+    auth-requests-per-minute: ${RATE_LIMIT_AUTH:10}
+    api-requests-per-minute: ${RATE_LIMIT_API:60}
+
+logging:
+  level:
+    com.mwanga.wallet: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"

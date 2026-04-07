@@ -1,0 +1,9 @@
+spring:
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.mwanga.wallet: WARN
+    org.springframework.security: WARN
+    root: ERROR

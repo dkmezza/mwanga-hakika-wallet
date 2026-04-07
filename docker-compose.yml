@@ -1,0 +1,81 @@
+version: "3.9"
+
+# ─── Mwanga Wallet — Full Stack ────────────────────────────────────────────────
+# Usage:
+#   cp .env.example .env          # fill in secrets
+#   docker compose up --build     # start all services
+#   docker compose down -v        # stop and remove volumes
+
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: mwanga-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-mwanga_wallet}
+      POSTGRES_USER:     ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-mwanga_wallet}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Spring Boot backend ───────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mwanga-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL:       jdbc:postgresql://postgres:5432/${DB_NAME:-mwanga_wallet}
+      DB_USERNAME:  ${DB_USERNAME:-postgres}
+      DB_PASSWORD:  ${DB_PASSWORD:-postgres}
+      JWT_SECRET:   ${JWT_SECRET}
+      JWT_EXPIRATION:         ${JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      TRANSFER_MIN_AMOUNT: ${TRANSFER_MIN_AMOUNT:-100}
+      TRANSFER_MAX_AMOUNT: ${TRANSFER_MAX_AMOUNT:-5000000}
+      TOPUP_MIN_AMOUNT:    ${TOPUP_MIN_AMOUNT:-100}
+      TOPUP_MAX_AMOUNT:    ${TOPUP_MAX_AMOUNT:-10000000}
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  # ── Next.js frontend ─────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mwanga-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      # Server-side API calls go direct to the backend container
+      API_URL: http://backend:8080
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+    driver: local
